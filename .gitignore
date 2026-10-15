@@ -1,0 +1,4 @@
+_skillhub_meta.json
+*.zip
+__pycache__/
+.DS_Store
