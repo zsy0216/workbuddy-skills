@@ -568,6 +568,54 @@ for drv in DRIVES:
 - `C:\Windows\Temp` 和用户 Temp 必须按 `__*_empty.tmp` + 软件名模式扫（权限不够的部分交管理员脚本）
 - **每次"验证零残留"后，仍要请用户用 Everything 搜一轮软件名（含大小写变体）复核**——脚本扫描的盲区只有 Everything 能兜底
 
+## 六·七-b、NSIS 卸载器临时目录残留（2026-10-18 QQ拼音实战，用户 Everything 搜索发现）
+
+**又是"验证零残留"后用户 Everything 捞出真残留的一例**（六·七同型，第 N 次验证"脚本全绿≠真零残留"）。QQ拼音收尾终检全 PASS 后，用户 Everything 搜 `qqpinyin` 截图显示 `AppData\Local\Temp\` 下一批 `nst/nsy/nsc*.tmp`：
+
+| 关键事实 | 内容 |
+|---------|------|
+| **是目录不是文件** | NSIS 卸载器把自身 DLL/卸载器副本解压到 `%TEMP%` 的临时目录，卸载器正常退出时自删；被中断（杀进程/超时/双实例互斥）就整目录遗留 |
+| **前缀有 5+ 变体** | `nst`（temp）、`nsy`、`nsc`、`nsl`、**`~nsu`/`~nsu1`/`~nsuA`**（波浪线开头！卸载器主副本）。正确模式：`^~?ns[a-z0-9]{1,5}\.tmp$`（不区分大小写）。只匹配 `nst\|nsy\|nsc` 会漏 `nsl` 和 `~nsu` 全家 |
+| **扫描必须目录+文件双通道** | `os.walk` 的 `filenames` 永远匹配不到目录名——上一轮"零命中"就是这么来的。`ls \| grep 'ns.*\.tmp'` 或 `os.listdir` + 目录名匹配才抓得到 |
+| **多次尝试留多份** | 用户 10-17 自己跑过一次卸载（留 20:29/20:30 两份）、10-18 我的 v2 跑一次（留 10:01/10:02 两份）——按目录 mtime 可与卸载尝试时间线一一对应 |
+| **同目录常见内容** | `Un_A.exe`/`Un.exe`（卸载器副本，QQ拼音 1.33MB）、`Au_.exe`、`QQPinyinHelper.dll`、`QQPinyinUninstallPlugin.dll`、`nsProcessW.dll`（进程检测插件）、`InstallOptions.dll` + `ioSpecial.ini` + `modern-*.bmp`（界面资源）、`uninstall_complete.exe`（腾讯卸载器收尾程序，在 Temp 根目录不带 ns 前缀） |
+
+**对策**：
+- 卸载任务收尾时，Temp 扫描模式固定为 `^~?ns[a-z0-9]{1,5}\.tmp$` + 软件名 + `uninstall_complete.exe`，且**目录名和文件名都要匹配**；扫完用比模式更宽的 `ns.*\.tmp` 复扫一遍（round3c 同款纪律）
+- 卸腾讯系软件（QQ/QQ拼音/电脑管家）后，`%TEMP%\uninstall_complete.exe` 必查
+- 删除零风险：这些是卸载器临时组件，安装目录已删后 DLL/exe 无任何用途；占用检查只需确认无 uninst/产品进程
+
+## 六·七-c、让用户的 Everything 排除 WorkBuddy 噪音（2026-10-18 用户提问）
+
+用户每轮用 Everything 复核时，`C:\Users\ZSY\.workbuddy\`（clipboard-images、projects 会话 jsonl、`.modify_backup_meta` 357 个 reg stub）和项目目录 `reg_backup_*` 都会混进结果造成误判。**交付清理方案时主动附上排除方法**：
+
+- 即时（搜索框语法，Everything 的 NOT 运算符是 `!`）：`qqpinyin !path:*.workbuddy*`（一条排除所有位置的 .workbuddy）；要连项目备份目录一起排：`qqpinyin !path:*.workbuddy* !path:*reg_backup*`
+- 永久：Everything → 工具 → 选项 → 索引 → Exclude → 添加 `C:\Users\ZSY\.workbuddy\*` 与 `<项目目录>\.workbuddy\*`（支持通配符），OK 后生效
+- 更省事：把带排除条件的搜索存为 Everything 过滤器/书签，以后一键调用
+
+## 六·七-d、用户 Profile 目录（C:\Users\<名>）残留扫描法（2026-10-18 实战）
+
+用户要求"扫 C:\Users\ZSY 有没有没清干净的"时的完整打法：
+
+**枚举**：AppData\Roaming + Local + LocalLow 三层一级目录 + Profile 根一级条目（带体积/文件数/mtime）。
+
+**"已卸载"四信号交叉判定（缺一不可，单信号必误判）**：
+1. 卸载条目三仓库全量（196 条，DisplayName+InstallLocation 匹配）——注意"无卸载条目"≠没装过（绿色版/便携版不注册）
+2. 开始菜单快捷方式全名单（159 条）= 在用软件白名单，卸载掉的软件快捷方式会消失
+3. Program Files×4 + **`AppData\Local\Programs`（用户级安装：Obsidian/uTools 类）** + **非标准安装根（D:\Tencent、D:\devtools、E:\ 等）**
+4. exe 实体全盘查找（安装本体不在 = 数据目录即残留）
+
+**两个反直觉规律**：
+- **mtime 新 ≠ 在用**（ramboplay.ra2 2025-05 还在写但本体早没了）；**mtime 老 ≠ 残留**（sogou 2020 年的目录是在用组件）
+- 子串匹配噪音极大（`HD Tune Pro` 匹配到快捷方式 "Activate or Trial PRO mode"、`FYPlayer` 匹配 "VMware Workstation 16 Player"、`kdesk` 匹配 "Remote Desktop Connection"）——自动判定结果**必须人工过堂**
+
+**执行纪律（本轮三次踩中）**：
+- **同一产品名在 AppData 多层都有副本**（kingsoft/ramboplay.ra2 在 Roaming 和 Local 各一份）——清理清单必须按"层×名"全组合列，删完一层要用宽通配复扫另一层（"超集"教训第三次应验）
+- **从报告授权清单到脚本 TARGETS 要逐条对账**（本轮报告授权 41 项、脚本只写 39 项，Bypass 漏写全靠复验兜底补删）
+- 复验宽扫命中仍要人工过堂：Anki 卡片媒体里的 `youdao-*.mp3`（用户学习资产）、`Notepad--\userstyle\Obsidian`（主题目录名）、`ASP.NET\DataProtection-Keys\key-*.xml`（文件名含 cef 子串）、联想管家 `devicecenter\cefcache`——全是误报
+- **名字撞车是宽扫误报高发区**：`@docmirror\dev-sidecar-gui`（在用产品的组件，撞名 Dev-Sidecar）、`Desktop\FYPlayer_免安装版\translations`（免安装软件的语言目录，撞名 .translation 缓存）——宽扫命中先看**父目录归属**再看名字
+- **执行中断的恢复模式**：脚本跑到一半被中断（用户关窗/中止回合）→ 不要盲重跑，先查各目标当前存在性 → 重跑同一脚本即可（已删项自动走 GONE 通道，对账仍闭合）→ 若 SUMMARY 未跑到则日志缺失，重跑会补齐（实测：中断时已删 2/15，重跑后 OK=13+GONE=2=15 对账 PASS）
+
 ## 六·八、被锁定文件的诊断与当场解法（2026-10-17 jisupdf 实战）
 
 删除报 **错误 5（ACCESS_DENIED）** 或 **错误 32（SHARING_VIOLATION）** = 文件被某进程映射中。沙箱内 `DeleteFileW` / `MoveFileEx` / `FILE_FLAG_DELETE_ON_CLOSE` / `icacls` 全无解，按下面走：
