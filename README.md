@@ -7,7 +7,7 @@ WorkBuddy 系统工具类 Skill 合集。纯文档型，无代码依赖，跨平
 | Skill | 用途 | 触发词 |
 |---|---|---|
 | `migrate-session-to-workspace` | 把会话从一个空间迁移到另一个空间 | 迁移任务、移动会话、跨空间整理 |
-| `windows-residue-cleanup` | Windows 软件卸载残留清理 | 卸载残留、清理残留、注册表幽灵项 |
+| `windows-residue-cleanup` | Windows 软件卸载 + 残留清理（完整流程） | 卸载软件、卸载残留、注册表幽灵项、强制卸载 |
 | `workbuddy-space-rename` | WorkBuddy 空间安全改名 | 空间改名、重命名空间、会话失联 |
 
 ## 一键导入（换电脑后使用）
