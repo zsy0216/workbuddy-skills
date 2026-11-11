@@ -1,4 +1,14 @@
+# 安装态元数据 / 本地产物
 _skillhub_meta.json
 *.zip
 __pycache__/
+*.pyc
 .DS_Store
+
+# blog-sync 运行时凭据与产物（禁止入库）
+config.json
+**/config/config.json
+**/chrome-profile/
+csdn_state.json
+screenshots/
+_dryrun_readback.txt

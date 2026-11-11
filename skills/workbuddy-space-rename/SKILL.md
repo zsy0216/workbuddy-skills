@@ -5,13 +5,13 @@ description: 安全重命名 WorkBuddy 空间（workspace）。当用户要修�
 
 # WorkBuddy 空间安全改名
 
-磁盘文件夹名 = 空间主键。WorkBuddy 在 `~/.workbuddy/projects/` 下用"绝对路径转义"为每个空间建目录（如 `E:\Documents\WorkBuddy\foo` → `e-Documents-WorkBuddy-foo`），存会话日志。侧边栏"显示名"独立存于 `~/.workbuddy/workspace-display-names.json`。
+磁盘文件夹名 = 空间主键。WorkBuddy 在 `~/.workbuddy/projects/` 下用"绝对路径转义"为每个空间建目录（如 `<your-workspace-dir>/foo` → `e-Documents-WorkBuddy-foo`），存会话日志。侧边栏"显示名"独立存于 `~/.workbuddy/workspace-display-names.json`。
 
 **只改磁盘文件夹名而不同步其他位置，会导致会话历史失联（"对话不能用了"）。必须同步以下 4 处：**
 
-1. 重命名磁盘文件夹：`E:\Documents\WorkBuddy\<旧>` → `<新>`（或在 `C:\Users\ZSY\WorkBuddy\` 下的空间）
-2. 重命名 `~/.workbuddy/projects/e-Documents-WorkBuddy-<旧>` → `...-<新>`（C盘路径对应 `c-Users-ZSY-WorkBuddy-<旧>`）
-3. 改中央库 `C:\Users\ZSY\.workbuddy\workbuddy.db`：
+1. 重命名磁盘文件夹：`<your-workspace-dir>/<旧>` → `<新>`（或在 `<your-workspace-dir>/` 下的空间）
+2. 重命名 `~/.workbuddy/projects/e-Documents-WorkBuddy-<旧>` → `...-<新>`（C盘路径对应 `c-Users-<用户名>-WorkBuddy-<旧>`）
+3. 改中央库 `~/.workbuddy/workbuddy.db`：
    `UPDATE sessions SET cwd='<新绝对路径>' WHERE cwd='<旧绝对路径>';`（sessions.cwd 是会话关联空间与 projects 键的依据；project_id 多为 NULL，靠 cwd 推导键名）
 4. 若 `workspace-display-names.json` 有该空间条目，同步其 **顶层 key、`id`、`path`** 三处为 `<新路径>`
 
@@ -21,11 +21,12 @@ description: 安全重命名 WorkBuddy 空间（workspace）。当用户要修�
 - 建议先关闭 WorkBuddy 桌面端再改中央库，改完重启生效。
 
 ## 诊断（改名前/发现问题后）
-用 Python（托管版 `C:\Users\ZSY\.workbuddy\binaries\python\versions\3.13.12\python.exe`）读 `workbuddy.db`：
+用 Python 读 `~/.workbuddy/workbuddy.db`（Windows 上建议用 WorkBuddy 托管的 Python 解释器）：
 
 ```python
 import sqlite3
-con = sqlite3.connect(r"C:\Users\ZSY\.workbuddy\workbuddy.db"); cur = con.cursor()
+import os
+con = sqlite3.connect(os.path.expanduser("~/.workbuddy/workbuddy.db")); cur = con.cursor()
 print([r for r in cur.execute("SELECT path FROM workspaces")])          # 仅少量注册空间
 for r in cur.execute("SELECT cwd, COUNT(*) FROM sessions GROUP BY cwd ORDER BY cwd"): print(r)
 for r in cur.execute("SELECT cwds FROM automations"): print(r)
@@ -37,9 +38,10 @@ for r in cur.execute("SELECT cwds FROM automations"): print(r)
 ## 修复脚本（PowerShell 调 Python，sessions.cwd 批量替换）
 ```python
 import sqlite3
-con = sqlite3.connect(r"C:\Users\ZSY\.workbuddy\workbuddy.db")
+import os
+con = sqlite3.connect(os.path.expanduser("~/.workbuddy/workbuddy.db"))
 con.execute("PRAGMA busy_timeout=15000"); cur = con.cursor()
-mapping = [("<旧绝对路径>","<新绝对路径>"), ...]   # 旧用双反斜杠，如 "E:\\Documents\\WorkBuddy\\2026-08-30-18-23-04"
+mapping = [("<旧绝对路径>","<新绝对路径>"), ...]   # 旧用双反斜杠，如 "<your-workspace-dir>/2026-08-30-18-23-04"
 for old, new in mapping:
     n = cur.execute("UPDATE sessions SET cwd=? WHERE cwd=?", (new, old)).rowcount
     print(new, n)

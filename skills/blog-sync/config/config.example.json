@@ -1,0 +1,6 @@
+{
+  "cnblogs_token": "在这里填博客园 PAT（account.cnblogs.com/settings/tokens 创建）",
+  "csdn_profile_note": "CSDN 无需配置 Cookie/签名：登录态保存在 chrome-profile 目录，跑 scripts/login_csdn.py 扫码一次即可",
+  "csdn_chrome": "auto",
+  "csdn_headless": true
+}
